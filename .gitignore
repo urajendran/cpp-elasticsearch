@@ -3,3 +3,4 @@ example/bin/*
 *.sconsign.dblite
 *DS_Store
 *.pro.user
+venv/*
