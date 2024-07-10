@@ -138,7 +138,7 @@ bool ElasticSearch::index(const std::string& index, const std::string& type, con
         return false;
 
     std::stringstream url;
-    url << index << "/" << type << "/" << id;
+    url << index ; // << "/" << type << "/" << id;
 
     std::stringstream data;
     data << jData;
@@ -146,11 +146,18 @@ bool ElasticSearch::index(const std::string& index, const std::string& type, con
     Json::Object result;
     _http.put(url.str().c_str(), data.str().c_str(), &result);
 
-    if(!result.member("created"))
-        EXCEPTION("The index induces error.");
+    if(!result.member("status"))
+        EXCEPTION("The index induces error.1");
 
-    if(result.getValue("created"))
-        return true;
+   // if(result.getValue("status"))
+   //     return true;
+
+    url << "/" << type << "/" << id;
+
+    _http.post(url.str().c_str(), data.str().c_str(), &result);
+
+    if(!result.member("status"))
+        EXCEPTION("The index induces error.2");
 
     std::cout << "endPoint: " << index << "/" << type << "/" << id << std::endl;
     std::cout << "jData" << jData.pretty() << std::endl;

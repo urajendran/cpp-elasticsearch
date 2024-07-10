@@ -143,7 +143,7 @@ class HTTP {
         unsigned int parseMessage(std::string& output, size_t& contentLength, bool& isChunked, Result& result);
 
         /// Append the chunk message to the stream.
-        size_t appendChunk(std::string& output, char* msg, size_t msgSize);
+        size_t appendChunk(std::string& output, char* msg, size_t msgSize, bool& lastChunkGot);
 
         /// Check if the connection is on error state.
         bool error();
