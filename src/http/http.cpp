@@ -558,44 +558,57 @@ unsigned int HTTP::readMessage(std::string& output, size_t& contentLength, bool&
 }
 
 // Append char* to output.
-size_t HTTP::appendChunk(std::string& output, char* msg, size_t msgSize) {
+size_t HTTP::appendChunk(std::string& output, char* msg, size_t msgSize, bool& lastChunkGot) {
     assert(msgSize > 0);
 
-    #if !defined(NDEBUG) && VERBOSE >= 4
-    show(msg, msgSize, __LINE__);
-    #endif
+    char* currentPos = msg;
+    size_t totalAppendedSize = 0;
 
-    char* afterSize;
-    size_t chunkSize = strtol(msg, &afterSize, 16);
+    while (currentPos < msg + msgSize) {
+        #if !defined(NDEBUG) && VERBOSE >= 4
+        show(currentPos, msgSize - (currentPos - msg), __LINE__);
+        #endif
 
-    if(error())
-        return 0;
+        char* afterSize;
+        size_t chunkSize = strtol(currentPos, &afterSize, 16);
 
-    if(chunkSize == 0)
-        return 0;
+        if (error() || chunkSize == 0) {
+            if (chunkSize ==0) {
+                lastChunkGot = true;
+                return totalAppendedSize;
+            } else {
+                lastChunkGot = false;
+                return 0;   
+            }
+            break;
+        }
 
+        // Move after the \r\n characters.
+        afterSize += 2;
 
-    // Move after the /r/n characters.
-    afterSize += 2;
+        assert(msgSize + msg > afterSize + 2);
 
-    assert(msgSize + msg > afterSize + 2);
+        if (chunkSize + afterSize + 2 <= msgSize + msg) {
+            output.append(afterSize, chunkSize);
+            totalAppendedSize += chunkSize;
+        } else {
+            size_t actualSize = msgSize - (afterSize - msg);
+            output.append(afterSize, actualSize);
+            totalAppendedSize += actualSize;
+        }
 
-    // Append the result to the output; remove the \r\n as line separator.
-    if(chunkSize + afterSize + 2 <= msgSize + msg)
-        // The chunksize is smaller, we take only the given size.
-        output.append(afterSize, chunkSize);
-    else{
-        // If the chunksize is higher, we take only what we got in the answer.
-        output.append(afterSize, msgSize - (afterSize - msg));
+        // Move to the next chunk, including the \r\n after the chunk content.
+        currentPos = afterSize + chunkSize + 2;
     }
 
-    return chunkSize;
+    return totalAppendedSize;
 }
 
 // Whole process to read the response from HTTP server.
 unsigned int HTTP::parseMessage(std::string& output, size_t& contentLength, bool& isChunked, Result& result) {
 
         unsigned int statusCode = 0;
+        bool lastChunkGot = false;
 
         // Socket is ready for reading.
         char recvline[4096];
@@ -630,7 +643,7 @@ unsigned int HTTP::parseMessage(std::string& output, size_t& contentLength, bool
         if(contentLength == 0 && isChunked) {
 
             // We already tested that the readSize is not 0.
-            contentLength = appendChunk(output, recvline, readSize);
+            contentLength = appendChunk(output, recvline, readSize, lastChunkGot);
 
             // Append the message to the output.
             if( contentLength == 0 ) {
@@ -751,7 +764,7 @@ unsigned int HTTP::parseMessage(std::string& output, size_t& contentLength, bool
                     }
 
                     // If the message content the length, parse the size.
-                    contentLength = appendChunk(output, endHeader + 4, readSize - headerSize);
+                    contentLength = appendChunk(output, endHeader + 4, readSize - headerSize, lastChunkGot);
 
                     if(contentLength == 0) {
                         result = OK;
@@ -804,7 +817,7 @@ unsigned int HTTP::parseMessage(std::string& output, size_t& contentLength, bool
         }
 
         // If chunked but no size, we return until we receive the answer.
-        if(isChunked && contentLength == 0) {
+        if(isChunked && (lastChunkGot == false)) {
             result = MORE_DATA;
             return statusCode;
         }
