@@ -28,8 +28,8 @@
 
 int main(int, char**) {
 
-    // Instanciate elasticsearch client.
-    HTTP http = HTTP("intranet001:9200", false);
+    // Instantiate elasticsearch client.
+    HTTP http("http://localhost:3000", 3000);
 
     // Index one document.
     Json::Object jData;
@@ -37,7 +37,9 @@ int main(int, char**) {
     jData.addMemberByKey("post_date", "2009-11-15T14:12:12");
     jData.addMemberByKey("message", "trying out Elasticsearch");
 
-    
+
+    std::cout << "Respose code: " << http.get("/", 0, &jData) << std::endl;
+    std::cout << jData << std::endl;
     std::cout << "End of test" << std::endl;
 
     return EXIT_SUCCESS;

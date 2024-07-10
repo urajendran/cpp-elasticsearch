@@ -24,6 +24,6 @@ objs.append(SConscript('../../src/http/SConscript', exports='localenv', variant_
 srclst = [builddir + '/' + x for x in glob.glob('*.cpp')]
 objs.extend(localenv.Object(src) for src in srclst)
 
-getstarted = localenv.Program(targetpath, objs)
+chunk_reader = localenv.Program(targetpath, objs)
 
-Return('chunk-reader')
+Return('chunk_reader')
